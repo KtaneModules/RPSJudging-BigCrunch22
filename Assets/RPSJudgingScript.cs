@@ -145,14 +145,15 @@ public class RPSJudgingScript : MonoBehaviour
 		if (ActualStage < Bomb.GetSolvedModuleNames().Where(a => !IgnoredModules.Contains(a)).Count() && !ModuleSolved)
         {
             ActualStage++;
+			StartCoroutine(Playtime());
         }
 		
-		if (MaxStage > 0 && ActualStage == MaxStage && Updatable && Playable)
-		{
-			Updatable = false;
-			StopAllCoroutines();
-			StartCoroutine(Whistling());
-		}
+		//if (MaxStage > 0 && ActualStage == MaxStage && Updatable && Playable)
+		//{
+		//	Updatable = false;
+		//	StopAllCoroutines();
+		//	StartCoroutine(Whistling());
+		//}
 	}
 	
 	void ScoreProcessing()
@@ -510,8 +511,8 @@ public class RPSJudgingScript : MonoBehaviour
 				}
 				Debug.LogFormat("[RPS Judging #{0}] ", moduleId);
 				Playable = true;
-				yield return new WaitForSecondsRealtime(30f);
-				StartCoroutine(Playtime());
+				yield return new WaitForSecondsRealtime(0f);
+				//StartCoroutine(Playtime());
 			}
 		}
 	}
@@ -519,7 +520,7 @@ public class RPSJudgingScript : MonoBehaviour
 	IEnumerator Solving()
 	{
 		yield return new WaitForSecondsRealtime(.001f);
-		Debug.LogFormat("[RPS Judging #{0}] The module was instantly solved. Have a heart!}", moduleId);
+		Debug.LogFormat("[RPS Judging #{0}] The module was instantly solved. Have a heart!", moduleId);
 		Playable = false;
 		Module.HandlePass();
 		ModuleSolved = true;
@@ -532,6 +533,18 @@ public class RPSJudgingScript : MonoBehaviour
 	IEnumerator Whistling()
 	{
 		Debug.LogFormat("[RPS Judging #{0}] The game is ended! These are the following results: Blue: {1} / Red {2}", moduleId, Score[0].ToString(), Score[1].ToString());
+		if (Score[0] > Score[1])
+		{
+			Debug.LogFormat("[RPS Judging #{0}] Blue Team wins!", moduleId);
+		}
+		else if (Score[0] < Score[1])
+		{
+			Debug.LogFormat("[RPS Judging #{0}] Red Team wins!", moduleId);
+		}
+		else
+		{
+			Debug.LogFormat("[RPS Judging #{0}] Its a draw!", moduleId);
+		}
 		Debug.LogFormat("[RPS Judging #{0}] ", moduleId);
 		Audio.PlaySoundAtTransform(MusicMaterial[1].name, transform);
 		Round.text = "";
