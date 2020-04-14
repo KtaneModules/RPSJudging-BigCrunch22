@@ -158,6 +158,9 @@ public class RPSJudgingScript : MonoBehaviour
 	
 	void ScoreProcessing()
 	{
+		PlaytimeIsOver = true;
+		Scoreboard = true;
+		Scoreboard = true;
 		CenterModule.material = Backgrounds[1];
 		for (int x = 0; x < 3; x++)
 		{
@@ -196,6 +199,7 @@ public class RPSJudgingScript : MonoBehaviour
 				TypingInput[6+x].SetActive(true);
 			}
 			this.GetComponent<KMSelectable>().UpdateChildren();
+			Scoreboard = false;
 		}
 	}
 	
@@ -558,6 +562,7 @@ public class RPSJudgingScript : MonoBehaviour
 	
 	IEnumerator Mistake()
 	{
+		Scolded = true;
 		for (int x = 0; x < 3; x++)
 		{
 			TypingInput[6+x].SetActive(false);
@@ -589,6 +594,125 @@ public class RPSJudgingScript : MonoBehaviour
 		Debug.LogFormat("[RPS Judging #{0}] You provided an incorrect information. A strike has been given.", moduleId);
 		Debug.LogFormat("[RPS Judging #{0}] ", moduleId);
 		Module.HandleStrike();
+		Scolded = false;
 		ScoreProcessing();
+	}
+	
+	//twitch plays
+    #pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"To submit the score on the current scoreboard, do !{0} submit [score] | To decide the result of the battle, submit !{0} flag [color] | Colors that are valid are: red, blue, and gray";
+    #pragma warning restore 414
+	
+	bool PlaytimeIsOver = false;
+	bool Scoreboard = false;
+	bool Scolded = false;
+	string[] Validity = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+	
+	IEnumerator ProcessTwitchCommand(string command)
+	{
+		string[] parameters = command.Split(' ');
+		if (Regex.IsMatch(parameters[0], @"^\s*submit\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+			yield return null;
+			if (parameters.Length > 2 || parameters.Length < 2)
+			{
+				yield return "sendtochaterror Parameter length is invalid. The command was not processed.";
+				yield break;
+			}
+			
+			else if (PlaytimeIsOver == false)
+			{
+				yield return "sendtochaterror The game is still active. The command was not processed.";
+				yield break;
+			}
+			
+			else if (Scolded == true)
+			{
+				yield return "sendtochaterror The referee is still telling you that a mistake has occured. The command was not processed.";
+				yield break;
+			}
+			
+			else if (Scoreboard == false)
+			{
+				yield return "sendtochaterror You are currently not in the scoring board at this instance. The command was not processed.";
+				yield break;
+			}
+			
+			else if (parameters.Length == 2)
+            {
+				foreach (char c in parameters[1])
+				{
+					if (!c.ToString().EqualsAny(Validity))
+					{
+						yield return "sendtochaterror The score being submitted contains a character that is not a number. The command was not processed.";
+						yield break;
+					}
+				}
+				
+				if (parameters[1].Length > 12)
+				{
+					yield return "sendtochaterror The number that was given is longer than 12 digits. The command was not processed.";
+					yield break;
+				}
+				
+				foreach (char c in parameters[1])
+				{
+					NumberButtons[Int32.Parse(c.ToString())].OnInteract();
+					yield return new WaitForSecondsRealtime(0.1f);
+				}
+				Submit.OnInteract();
+			}
+		}
+		
+		if (Regex.IsMatch(parameters[0], @"^\s*flag\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+			if (parameters.Length > 2 || parameters.Length < 2)
+			{
+				yield return "sendtochaterror Parameter length is invalid. The command was not processed.";
+				yield break;
+			}
+			
+			yield return null;
+			if (PlaytimeIsOver == false)
+			{
+				yield return "sendtochaterror The game is still active. The command was not processed.";
+				yield break;
+			}
+			
+			else if (Scolded == true)
+			{
+				yield return "sendtochaterror The referee is still telling you that a mistake has occured. The command was not processed.";
+				yield break;
+			}
+			
+			else if (Scoreboard == true)
+			{
+				yield return "sendtochaterror You are currently not deciding the winner in this instance. The command was not processed.";
+				yield break;
+			}
+			
+			else
+			{
+				if (Regex.IsMatch(parameters[1], @"^\s*red\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*r\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+				{
+					FlagResults[1].OnInteract();
+				}
+				
+				else if (Regex.IsMatch(parameters[1], @"^\s*blue\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*b\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+				{
+					FlagResults[0].OnInteract();
+				}
+				
+				else if (Regex.IsMatch(parameters[1], @"^\s*gray\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*grey\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*g\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+				{
+					FlagResults[2].OnInteract();
+				}
+				
+				else
+				{
+					yield return "sendtochaterror The color of the flag that was sent was not valid. The command was not processed.";
+				}
+			}
+		}
 	}
 }
