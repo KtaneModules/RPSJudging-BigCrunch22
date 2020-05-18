@@ -695,16 +695,19 @@ public class RPSJudgingScript : MonoBehaviour
 			{
 				if (Regex.IsMatch(parameters[1], @"^\s*red\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*r\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
 				{
+					yield return "strike";
 					FlagResults[1].OnInteract();
 				}
 				
 				else if (Regex.IsMatch(parameters[1], @"^\s*blue\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*b\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
 				{
+					yield return "strike";
 					FlagResults[0].OnInteract();
 				}
 				
 				else if (Regex.IsMatch(parameters[1], @"^\s*gray\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*grey\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) || Regex.IsMatch(parameters[1], @"^\s*g\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
 				{
+					yield return "strike";
 					FlagResults[2].OnInteract();
 				}
 				
