@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using KModkit;
 
 public class RPSJudgingScript : MonoBehaviour
 {
@@ -17,7 +16,7 @@ public class RPSJudgingScript : MonoBehaviour
 	public AudioClip[] MusicMaterial;
 	public KMSelectable[] NumberButtons;
 	public KMSelectable[] FlagResults;
-	public KMSelectable[] Nothing;
+	public KMSelectable[] RecoveryButtons;
 	public KMSelectable Submit;
 	public MeshRenderer CenterModule;
 	public MeshRenderer Border;
@@ -30,7 +29,9 @@ public class RPSJudgingScript : MonoBehaviour
 	public GameObject Rewind;
 	
 	public GameObject[] TypingInput;
-	
+
+	List<int> LeftDisplays = new List<int>();
+	List<int> RightDisplays = new List<int>();
 	int[] Cuprum = {0, 0};
 	long[] Score = {0, 0};
 	long RoundNumber = 0;
@@ -38,9 +39,11 @@ public class RPSJudgingScript : MonoBehaviour
 	
 	int ActualStage = 0;
 	int Team = 0;
+	int RecoverIndex = 0;
 	int MaxStage;
 	bool Playable = false;
-	bool Updatable = false;
+	//bool Updatable = false;
+	bool InRecovery = false;
 	string[] ScoreLength = {"", ""};
 	
 	//Logging
@@ -62,12 +65,12 @@ public class RPSJudgingScript : MonoBehaviour
 				return false;
             };
         }
-		for (int x = 0; x < Nothing.Count(); x++)
+		for (int x = 0; x < RecoveryButtons.Count(); x++)
         {
-            int Empty = x;
-            Nothing[Empty].OnInteract += delegate
+            int Btn = x;
+			RecoveryButtons[Btn].OnInteract += delegate
             {
-                Useless(Empty);
+                RecoverPress(Btn);
 				return false;
             };
         }
@@ -80,7 +83,7 @@ public class RPSJudgingScript : MonoBehaviour
 				return false;
             };
         }
-		Submit.OnInteract += delegate () { Submiting(); return false; };
+		Submit.OnInteract += delegate () { Submitting(); return false; };
 	}
 
 	void Start()
@@ -136,7 +139,7 @@ public class RPSJudgingScript : MonoBehaviour
 	{
 		MaxStage = Bomb.GetSolvableModuleNames().Where(a => !IgnoredModules.Contains(a)).Count();
 		Playable = true;
-		Updatable = true;
+		//Updatable = true;
 		StartCoroutine(Playtime());
 	}
 	
@@ -160,7 +163,6 @@ public class RPSJudgingScript : MonoBehaviour
 	{
 		PlaytimeIsOver = true;
 		Scoreboard = true;
-		Scoreboard = true;
 		CenterModule.material = Backgrounds[1];
 		for (int x = 0; x < 3; x++)
 		{
@@ -172,8 +174,28 @@ public class RPSJudgingScript : MonoBehaviour
 		}
 		this.GetComponent<KMSelectable>().UpdateChildren();
 	}
+
+	void EnterRecovery()
+    {
+		InRecovery = true;
+		Audio.PlaySoundAtTransform(MusicMaterial[0].name, transform);
+		CenterModule.material = Backgrounds[0];
+		for (int y = 0; y < 3; y++)
+		{
+			TypingInput[3+y].SetActive(false);
+		}
+		for (int x = 0; x < 3; x++)
+		{
+			TypingInput[x].SetActive(true);
+		}
+		RecoverIndex = 0;
+		Renderers[0].sprite = SpriteLeft[LeftDisplays[RecoverIndex]];
+		Renderers[1].sprite = SpriteRight[RightDisplays[RecoverIndex]];
+		Round.text = "Round " + (RecoverIndex + 1).ToString();
+		this.GetComponent<KMSelectable>().UpdateChildren();
+	}
 	
-	void Submiting()
+	void Submitting()
 	{
 		Submit.AddInteractionPunch(.2f);
 		Audio.PlaySoundAtTransform(MusicMaterial[4].name, transform);
@@ -203,9 +225,31 @@ public class RPSJudgingScript : MonoBehaviour
 		}
 	}
 	
-	void Useless (int Empty)
+	void RecoverPress (int Btn)
 	{
-		Nothing[Empty].AddInteractionPunch(.2f);
+		RecoveryButtons[Btn].AddInteractionPunch(.2f);
+		if (Btn == 0 && InRecovery && RecoverIndex != 0)
+        {
+			Audio.PlaySoundAtTransform(MusicMaterial[0].name, transform);
+			RecoverIndex--;
+			Renderers[0].sprite = SpriteLeft[LeftDisplays[RecoverIndex]];
+			Renderers[1].sprite = SpriteRight[RightDisplays[RecoverIndex]];
+			Round.text = "Round " + (RecoverIndex + 1).ToString();
+		}
+		else if (Btn == 1 && InRecovery && RecoverIndex != (MaxStage - 1))
+		{
+			Audio.PlaySoundAtTransform(MusicMaterial[0].name, transform);
+			RecoverIndex++;
+			Renderers[0].sprite = SpriteLeft[LeftDisplays[RecoverIndex]];
+			Renderers[1].sprite = SpriteRight[RightDisplays[RecoverIndex]];
+			Round.text = "Round " + (RecoverIndex + 1).ToString();
+		}
+		else if (Btn == 2 && InRecovery)
+		{
+			InRecovery = false;
+			Audio.PlaySoundAtTransform(MusicMaterial[2].name, transform);
+			ScoreProcessing();
+		}
 	}
 	
 	void Press (int Numbered)
@@ -241,6 +285,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
 							Winner.text = "Blue Team\nWins!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -271,6 +316,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
 							Winner.text = "Blue Team\nWins!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -318,6 +364,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
 							Winner.text = "Red Team\nWins!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -348,6 +395,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
 							Winner.text = "Red Team\nWins!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -395,6 +443,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[6].name, transform);
 							Winner.text = "It Is A\nTie!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -425,6 +474,7 @@ public class RPSJudgingScript : MonoBehaviour
 							CenterModule.material = Backgrounds[4];
 							Audio.PlaySoundAtTransform(MusicMaterial[6].name, transform);
 							Winner.text = "It Is A\nTie!";
+							ModuleSolved = true;
 							Module.HandlePass();
 						}
 						
@@ -478,7 +528,9 @@ public class RPSJudgingScript : MonoBehaviour
 				{
 					Cuprum[a] = UnityEngine.Random.Range(0,101);
 				}
-				
+				LeftDisplays.Add(Cuprum[0]);
+				RightDisplays.Add(Cuprum[1]);
+
 				Renderers[0].sprite = SpriteLeft[Cuprum[0]];
 				Renderers[1].sprite = SpriteRight[Cuprum[1]];
 				RoundNumber++;
@@ -595,51 +647,74 @@ public class RPSJudgingScript : MonoBehaviour
 		Debug.LogFormat("[RPS Judging #{0}] ", moduleId);
 		Module.HandleStrike();
 		Scolded = false;
-		ScoreProcessing();
+		EnterRecovery();
 	}
 	
 	//twitch plays
     #pragma warning disable 414
-    private readonly string TwitchHelpMessage = @"To submit the score on the current scoreboard, do !{0} submit [score] | To decide the result of the battle, submit !{0} flag [color] | Colors that are valid are: red, blue, and gray";
+    private readonly string TwitchHelpMessage = @"To submit the score on the current scoreboard, do !{0} submit [score] | To decide the result of the battle, do !{0} flag [color] | To review a specific round when in review mode, do !{0} review [round] | To exit review mode, do !{0} continue | Colors that are valid are: red, blue, and gray";
     #pragma warning restore 414
 	
 	bool PlaytimeIsOver = false;
 	bool Scoreboard = false;
 	bool Scolded = false;
 	string[] Validity = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
-	
+
 	IEnumerator ProcessTwitchCommand(string command)
 	{
+		if (Regex.IsMatch(command, @"^\s*continue\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (PlaytimeIsOver == false)
+			{
+				yield return "sendtochaterror The game is still active. The command was not processed.";
+				yield break;
+			}
+
+			else if (Scolded == true)
+			{
+				yield return "sendtochaterror The referee is telling you that a mistake has occured. The command was not processed.";
+				yield break;
+			}
+
+			else if (InRecovery == false)
+			{
+				yield return "sendtochaterror You are currently not in review mode at this instance. The command was not processed.";
+				yield break;
+			}
+
+			RecoveryButtons[2].OnInteract();
+		}
 		string[] parameters = command.Split(' ');
 		if (Regex.IsMatch(parameters[0], @"^\s*submit\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
+		{
 			yield return null;
 			if (parameters.Length > 2 || parameters.Length < 2)
 			{
 				yield return "sendtochaterror Parameter length is invalid. The command was not processed.";
 				yield break;
 			}
-			
+
 			else if (PlaytimeIsOver == false)
 			{
 				yield return "sendtochaterror The game is still active. The command was not processed.";
 				yield break;
 			}
-			
+
 			else if (Scolded == true)
 			{
-				yield return "sendtochaterror The referee is still telling you that a mistake has occured. The command was not processed.";
+				yield return "sendtochaterror The referee is telling you that a mistake has occured. The command was not processed.";
 				yield break;
 			}
-			
+
 			else if (Scoreboard == false)
 			{
 				yield return "sendtochaterror You are currently not in the scoring board at this instance. The command was not processed.";
 				yield break;
 			}
-			
+
 			else if (parameters.Length == 2)
-            {
+			{
 				foreach (char c in parameters[1])
 				{
 					if (!c.ToString().EqualsAny(Validity))
@@ -648,13 +723,13 @@ public class RPSJudgingScript : MonoBehaviour
 						yield break;
 					}
 				}
-				
+
 				if (parameters[1].Length > 12)
 				{
 					yield return "sendtochaterror The number that was given is longer than 12 digits. The command was not processed.";
 					yield break;
 				}
-				
+
 				foreach (char c in parameters[1])
 				{
 					NumberButtons[Int32.Parse(c.ToString())].OnInteract();
@@ -663,29 +738,29 @@ public class RPSJudgingScript : MonoBehaviour
 				Submit.OnInteract();
 			}
 		}
-		
+
 		if (Regex.IsMatch(parameters[0], @"^\s*flag\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
+		{
 			if (parameters.Length > 2 || parameters.Length < 2)
 			{
 				yield return "sendtochaterror Parameter length is invalid. The command was not processed.";
 				yield break;
 			}
-			
+
 			yield return null;
 			if (PlaytimeIsOver == false)
 			{
 				yield return "sendtochaterror The game is still active. The command was not processed.";
 				yield break;
 			}
-			
+
 			else if (Scolded == true)
 			{
-				yield return "sendtochaterror The referee is still telling you that a mistake has occured. The command was not processed.";
+				yield return "sendtochaterror The referee is telling you that a mistake has occured. The command was not processed.";
 				yield break;
 			}
-			
-			else if (Scoreboard == true)
+
+			else if (Scoreboard == true || InRecovery == true)
 			{
 				yield return "sendtochaterror You are currently not deciding the winner in this instance. The command was not processed.";
 				yield break;
@@ -717,5 +792,158 @@ public class RPSJudgingScript : MonoBehaviour
 				}
 			}
 		}
+
+		if (Regex.IsMatch(parameters[0], @"^\s*review\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+		{
+			yield return null;
+			if (parameters.Length > 2 || parameters.Length < 2)
+			{
+				yield return "sendtochaterror Parameter length is invalid. The command was not processed.";
+				yield break;
+			}
+
+			else if (PlaytimeIsOver == false)
+			{
+				yield return "sendtochaterror The game is still active. The command was not processed.";
+				yield break;
+			}
+
+			else if (Scolded == true)
+			{
+				yield return "sendtochaterror The referee is telling you that a mistake has occured. The command was not processed.";
+				yield break;
+			}
+
+			else if (InRecovery == false)
+			{
+				yield return "sendtochaterror You are currently not in review mode at this instance. The command was not processed.";
+				yield break;
+			}
+
+			else if (parameters.Length == 2)
+			{
+				foreach (char c in parameters[1])
+				{
+					if (!c.ToString().EqualsAny(Validity))
+					{
+						yield return "sendtochaterror The round being submitted contains a character that is not a number. The command was not processed.";
+						yield break;
+					}
+				}
+
+				long round = long.Parse(parameters[1]);
+				if (round < 1 || round > MaxStage)
+				{
+					yield return "sendtochaterror The number that was given is not in the range of 1-"+MaxStage+". The command was not processed.";
+					yield break;
+				}
+
+				if (RecoverIndex < (round - 1))
+                {
+					while (RecoverIndex != (round - 1))
+                    {
+						RecoveryButtons[1].OnInteract();
+						yield return new WaitForSecondsRealtime(0.05f);
+					}
+                }
+				else
+				{
+					while (RecoverIndex != (round - 1))
+					{
+						RecoveryButtons[0].OnInteract();
+						yield return new WaitForSecondsRealtime(0.05f);
+					}
+				}
+			}
+		}
+	}
+
+	IEnumerator TwitchHandleForcedSolve()
+    {
+		if (Scolded)
+        {
+			HandleTPSolverPass();
+			yield break;
+        }
+		if ((Team == 1 && !Score[0].ToString().Equals(ScoreLength[0])) || (PlaytimeIsOver && !Scoreboard && !InRecovery && !Score[1].ToString().Equals(ScoreLength[1])))
+        {
+			HandleTPSolverPass();
+			yield break;
+		}
+		if (Scoreboard)
+        {
+			string scoreString = Score[Team].ToString();
+			if (NumberItem.text.Length > scoreString.Length)
+            {
+				HandleTPSolverPass();
+				yield break;
+			}
+			for (int i = 0; i < NumberItem.text.Length; i++)
+            {
+				if (!NumberItem.text[i].Equals(scoreString[i]))
+                {
+					HandleTPSolverPass();
+					yield break;
+				}
+            }
+        }
+		while (!PlaytimeIsOver) yield return true;
+		if (InRecovery)
+        {
+			RecoveryButtons[2].OnInteract();
+			yield return new WaitForSecondsRealtime(0.1f);
+		}
+		if (Scoreboard)
+        {
+			int start = Team;
+			for (int i = start; i < 2; i++)
+            {
+				int start2 = NumberItem.text.Length;
+				for (int j = start2; j < Score[i].ToString().Length; j++)
+				{
+					NumberButtons[Int32.Parse(Score[i].ToString()[j].ToString())].OnInteract();
+					yield return new WaitForSecondsRealtime(0.1f);
+				}
+				Submit.OnInteract();
+				yield return new WaitForSecondsRealtime(0.1f);
+			}
+		}
+		if (Score[0] > Score[1])
+			FlagResults[0].OnInteract();
+		else if (Score[0] < Score[1])
+			FlagResults[1].OnInteract();
+		else
+			FlagResults[2].OnInteract();
+	}
+
+	void HandleTPSolverPass()
+    {
+		StopAllCoroutines();
+		CenterModule.material = Backgrounds[4];
+		if (Rewind.activeSelf)
+			Rewind.SetActive(false);
+		for (int y = 0; y < 6; y++)
+		{
+			TypingInput[3+y].SetActive(false);
+		}
+		if (Score[0] > Score[1])
+		{
+			Border.material = Backgrounds[1];
+			Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
+			Winner.text = "Blue Team\nWins!";
+		}
+		else if (Score[0] < Score[1])
+		{
+			Border.material = Backgrounds[2];
+			Audio.PlaySoundAtTransform(MusicMaterial[5].name, transform);
+			Winner.text = "Red Team\nWins!";
+		}
+		else
+		{
+			Border.material = Backgrounds[3];
+			Audio.PlaySoundAtTransform(MusicMaterial[6].name, transform);
+			Winner.text = "It Is A\nTie!";
+		}
+		Module.HandlePass();
 	}
 }
